@@ -1,0 +1,7 @@
+{
+  "importMap": "./import_map.json",
+  "tasks": {
+    "start": "deno run --allow-net --allow-env src/app.ts",
+    "test": "deno test --allow-net --allow-env"
+  }
+}
