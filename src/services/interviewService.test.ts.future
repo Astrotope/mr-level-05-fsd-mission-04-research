@@ -1,0 +1,257 @@
+import { assertEquals, assertRejects } from "https://deno.land/std@0.204.0/assert/mod.ts";
+import { assertSpyCall, spy, stub } from "https://deno.land/std@0.204.0/testing/mock.ts";
+import { startInterview, processResponse, analyzeInterview } from "./interviewService.ts";
+import { 
+    GoogleGenerativeAI,
+    type GenerativeModel,
+    type GenerateContentResult,
+    type BlockReason,
+    type ChatSession,
+    type FunctionCall,
+} from "../deps.ts";
+
+// Types from interviewService.ts
+interface Message {
+    role: "user" | "model";
+    parts: Array<{ text: string }>;
+}
+
+interface InterviewInput {
+    jobTitle: string;
+}
+
+// Test data
+const jobTitle = "Full stack Developer";
+const question = "Tell me about yourself.";
+
+const expectedResult: InterviewInput & { question: string; history: Message[] } = {
+    jobTitle,
+    question,
+    history: [
+        {
+            role: "user" as const,
+            parts: [{ text: `I am applying for the ${jobTitle} position. Please start the interview with your first question.` }]
+        },
+        {
+            role: "model" as const,
+            parts: [{ text: question }]
+        }
+    ]
+};
+
+// Mock AI response
+const mockAIResponse = "What is your experience with modern web technologies?";
+
+// Create mock response that matches GenerateContentResult
+const mockGenerateContentResult: GenerateContentResult = {
+    response: {
+        text: () => mockAIResponse,
+        candidates: [{
+            index: 0,
+            content: {
+                parts: [{ text: mockAIResponse }],
+                role: "model"
+            }
+        }],
+        promptFeedback: { 
+            blockReason: "OTHER" as BlockReason,
+            safetyRatings: []
+        },
+        functionCall: () => undefined as FunctionCall | undefined,
+        functionCalls: () => [] as FunctionCall[]
+    }
+};
+
+// Create type-safe stubs
+const mockSendMessage = stub(
+    { sendMessage: () => Promise.resolve(mockGenerateContentResult) },
+    "sendMessage",
+    () => Promise.resolve(mockGenerateContentResult)
+);
+
+const mockChatSession = {
+    sendMessage: mockSendMessage,
+    model: "gemini-1.0-pro",
+    getHistory: async () => Promise.resolve([
+        {
+            role: "user",
+            parts: [{ text: "Previous response" }]
+        },
+        {
+            role: "model",
+            parts: [{ text: "Previous question" }]
+        }
+    ]),
+    sendMessageStream: () => {
+        throw new Error("Not implemented");
+    }
+} as unknown as ChatSession;
+
+// Create mock GenerativeModel
+const mockGenerativeModel: Partial<GenerativeModel> = {
+    startChat: () => mockChatSession,
+    apiKey: "mock-api-key",
+    model: "gemini-1.0-pro",
+    generationConfig: {},
+    safetySettings: []
+};
+
+// Mock the GoogleGenerativeAI class
+stub(
+    GoogleGenerativeAI.prototype,
+    "getGenerativeModel",
+    () => mockGenerativeModel as GenerativeModel
+);
+
+Deno.test("startInterview", async (t) => {
+    await t.step("should return JSON object that matches expected result", () => {
+        const result = startInterview({ jobTitle });
+        assertEquals(result, expectedResult);
+    });
+
+    await t.step("should throw error when jobTitle is missing", () => {
+        try {
+            startInterview({} as InterviewInput);
+            throw new Error("Should have thrown");
+        } catch (error) {
+            assertEquals(error.message, "Job title is required");
+        }
+    });
+});
+
+Deno.test("processResponse", async (t) => {
+    const mockHistory: Message[] = [
+        { role: "user", parts: [{ text: "Previous response" }] },
+        { role: "model", parts: [{ text: "Previous question" }] }
+    ];
+
+    await t.step("should process response and return next question", async () => {
+        const response = "I have 5 years of experience working with React, Node.js, and PostgreSQL. I've built several full-stack applications and enjoy solving complex technical challenges.";
+        const result = await processResponse({ jobTitle, response, history: mockHistory });
+        
+        // Check structure
+        assertEquals(typeof result.question, "string");
+        assertEquals(Array.isArray(result.history), true);
+        assertEquals(result.history.length, mockHistory.length + 2);
+
+        // If using real AI
+        if (Deno.env.get("USE_REAL_AI") === "true") {
+            console.log('\nProcess Response Test:');
+            console.log('Job Title:', jobTitle);
+            console.log('Candidate Response:', response);
+            console.log('AI Follow-up Question:', result.question);
+            
+            // Verify question format
+            assertEquals(result.question.includes("?"), true);
+            assertEquals(result.question.length > 10, true);
+        }
+    });
+
+    await t.step("should handle initial interaction with empty history correctly", async () => {
+        const initialResponse = "I am excited to interview for this position";
+        const result = await processResponse({ 
+            jobTitle, 
+            response: initialResponse,
+            history: []
+        });
+
+        assertEquals(result.history.length, 2);
+        assertEquals(result.history[0], {
+            role: "user" as const,
+            parts: [{ text: initialResponse }]
+        });
+        
+        assertEquals(result.history[1].role, "model");
+        assertEquals(result.history[1].parts[0].text, result.question);
+    });
+
+    await t.step("should maintain context in follow-up questions", async () => {
+        if (Deno.env.get("USE_REAL_AI") === "true") {
+            const initialResponse = "I have 5 years of experience with React and Node.js. I've built several enterprise-level applications.";
+            const firstResult = await processResponse({ 
+                jobTitle, 
+                response: initialResponse,
+                history: [] // Empty history for first interaction
+            });
+
+            assertEquals(firstResult.history.length, 2);
+            assertEquals(firstResult.history[0].role, "user");
+            assertEquals(firstResult.history[0].parts[0].text, initialResponse);
+
+            const followUpResponse = "One of my major projects was a real-time analytics dashboard that processed millions of data points daily. I used WebSocket for live updates and implemented efficient caching strategies.";
+            const secondResult = await processResponse({
+                jobTitle,
+                response: followUpResponse,
+                history: firstResult.history
+            });
+
+            console.log('\nContext Maintenance Test:');
+            console.log('Initial Response:', initialResponse);
+            console.log('First AI Question:', firstResult.question);
+            console.log('Follow-up Response:', followUpResponse);
+            console.log('Follow-up AI Question:', secondResult.question);
+
+            assertEquals(secondResult.question !== firstResult.question, true);
+            assertEquals(secondResult.history.length, firstResult.history.length + 2);
+        }
+    });
+
+    await t.step("should throw error when required fields are missing", async () => {
+        await assertRejects(
+            () => processResponse({} as any),
+            Error,
+            "Job title, response, and history are required"
+        );
+    });
+});
+
+Deno.test("analyzeInterview", async (t) => {
+    await t.step("should analyze interview and return analysis", async () => {
+        const history: Message[] = Deno.env.get("USE_REAL_AI") === "true" ? [
+            {
+                role: "user",
+                parts: [{ text: `I am applying for the ${jobTitle} position. Please start the interview with your first question.` }]
+            },
+            {
+                role: "model",
+                parts: [{ text: "Tell me about your experience with full-stack development." }]
+            },
+            {
+                role: "user",
+                parts: [{ text: "I have 5 years of experience working with React, Node.js, and PostgreSQL. In my current role, I built and maintained a microservices architecture that processed over 1 million transactions daily. I also implemented CI/CD pipelines using GitHub Actions and Docker, which reduced deployment time by 60%." }]
+            },
+            {
+                role: "model",
+                parts: [{ text: "How do you handle challenging technical problems in your projects?" }]
+            },
+            {
+                role: "user",
+                parts: [{ text: "I follow a systematic approach to problem-solving. First, I break down the problem into smaller, manageable components. Then, I research existing solutions and best practices. I also collaborate with team members when needed. For example, when we faced performance issues in our application, I used performance profiling tools to identify bottlenecks, implemented caching strategies, and optimized database queries, which improved response times by 40%." }]
+            }
+        ] : [
+            { role: "user" as const, parts: [{ text: "My response" }] },
+            { role: "model" as const, parts: [{ text: "Next question" }] }
+        ];
+
+        const result = await analyzeInterview({ jobTitle, history });
+        
+        assertEquals(typeof result.history[result.history.length - 1].parts[0].text, "string");
+        assertEquals(result.history.length, history.length + 2);
+        
+        if (Deno.env.get("USE_REAL_AI") === "true") {
+            console.log('\nReal Interview History:');
+            history.forEach(entry => {
+                console.log(`\n${entry.role.toUpperCase()}: ${entry.parts[0].text}`);
+            });
+            console.log('\nAI Analysis:', result.history[result.history.length - 1].parts[0].text);
+        }
+    });
+
+    await t.step("should throw error when required fields are missing", async () => {
+        await assertRejects(
+            () => analyzeInterview({} as any),
+            Error,
+            "Job title and history are required"
+        );
+    });
+});

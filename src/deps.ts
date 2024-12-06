@@ -10,4 +10,7 @@ export { GoogleGenerativeAI } from "@google/generative-ai";
 export type { 
     GenerateContentResult,
     GenerativeModel,
+    BlockReason,
+    ChatSession,
+    FunctionCall,
 } from "@google/generative-ai";
