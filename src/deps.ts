@@ -1,4 +1,5 @@
 export { Application, Router, Context } from "https://deno.land/x/oak@v10.4.0/mod.ts";
+export { oakCors } from "https://deno.land/x/cors/mod.ts";
 export { assertEquals, assertStringIncludes } from "https://deno.land/std/assert/mod.ts";
 export { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 export { superdeno } from "https://deno.land/x/superdeno@4.9.0/mod.ts";

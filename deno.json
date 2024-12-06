@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "start": "deno run --allow-read=.env,.env.defaults,.env.example --allow-env=API_KEY,MODEL_NAME,PORT --allow-net ----allow-import src/app.ts",
+    "start": "deno run --watch --allow-read=.env,.env.defaults,.env.example --allow-env=API_KEY,MODEL_NAME,PORT --allow-net src/app.ts",
     "test": "deno test --allow-read=.env,.env.defaults,.env.example --allow-env=API_KEY,MODEL_NAME,PORT --allow-net -- --allow-import"
   },
   "imports": {

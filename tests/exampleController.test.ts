@@ -1,6 +1,13 @@
 import { superoak, delay, assertStringIncludes, assertEquals } from "../src/deps.ts";
 import { app } from "../src/app.ts";
 
+interface TestResponse {
+  body: {
+    message: string | null;  // allows string or null
+  } | null;
+  text: string | null;  // allows string or null
+}
+
 /**
  * Test that the server returns the "Hello Deno!" JSON object when make a
  * GET request to "/".
@@ -10,8 +17,17 @@ Deno.test("it should return some JSON with status code 200", async () => {
   await request.get("/example")
     .expect(200)
     .expect("Content-Type", /json/)
-    .expect(function(response) {assertEquals(response.body.message.includes("Hello"), true);})
-    .expect(function(response) {assertStringIncludes(response.body.message, "Hello");});
+    .expect((response: TestResponse) => {
+      // First verify the response structure
+      assertEquals(response.body !== null, true, "Response body should not be null");
+      if (response.body) {  // null check for TS
+        assertEquals(response.body.message !== null, true, "Response message should not be null");
+        if (response.body.message) {  // null check for TS
+          // Then test the content
+          assertStringIncludes(response.body.message, "Hello", "Response message should include 'Hello'");
+        }
+      }
+    });
     // .expect(function(response) {console.log(response);});
     
 });
@@ -24,7 +40,11 @@ Deno.test("it should return some JSON with status code 200, and content type app
     .expect(200)
     //.expect("Content-Type", /text/)
     // .expect(function(response) {assertEquals(response.body.includes("jango"), true);})
-    .expect(function(response) {assertStringIncludes(response.text, "jango");});
+    .expect(function(response: TestResponse) {
+      if (response.text) {  // null check
+        assertStringIncludes(response.text, "jango", "Response text should include 'jango'");
+      }
+    });
    // .expect(function(response) {console.log(response);});
 });
 

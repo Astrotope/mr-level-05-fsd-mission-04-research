@@ -1,4 +1,4 @@
-import { Application } from "./deps.ts";
+import { Application, oakCors } from "./deps.ts";
 import router from "./routes/apiRoutes.ts";
 import { load } from "./deps.ts";
 
@@ -9,9 +9,12 @@ const conf = await load({
     examplePath: null,
     export: true,
     allowEmptyValues: true,
-  });
+});
 
 const app = new Application();
+
+app.use(oakCors({ origin: "*" }));
+
 app.use(router.routes());
 app.use(router.allowedMethods());
 
