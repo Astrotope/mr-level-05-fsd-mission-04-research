@@ -1,8 +1,8 @@
-# Command Log
+# Command Log - Project Setup
 
 ## Initial Project Setup
 ```bash
-cd Documents/mission_ready/level-05/
+cd ~/Documents/mission_ready/level-05/
 mkdir mission-05
 cd mission-05
 mkdir -p research/deno-backend
@@ -101,5 +101,5 @@ git commit -m "update README.md with project folder tree."
 
 # Repository setup and push
 git branch -M main
-git remote add origin https://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@github.com/Astrotope/mr-level-05-fsd-mission-04-research.git
+git remote add origin https://<PAT>@github.com/Astrotope/mr-level-05-fsd-mission-04-research.git
 git push -u origin HEAD
