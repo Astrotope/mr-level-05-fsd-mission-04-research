@@ -1,13 +1,5 @@
-import { load, GoogleGenerativeAI, GenerateContentResult, GenerativeModel } from "../deps.ts";
-
-// Load environment variables
-const conf = await load({
-    envPath: "./.env",
-    defaultsPath : "./.env.defaults",
-    examplePath: null,
-    export: true,
-    allowEmptyValues: true,
-  });
+import { GoogleGenerativeAI, GenerateContentResult, GenerativeModel } from "../deps.ts";
+import { config } from "../config.ts";
 
 const apiKey = Deno.env.get("API_KEY");
 if (!apiKey) {

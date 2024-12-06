@@ -1,15 +1,6 @@
 import { Application, oakCors } from "./deps.ts";
 import router from "./routes/apiRoutes.ts";
-import { load } from "./deps.ts";
-
-// Load environment variables
-const conf = await load({
-    envPath: "./.env",
-    defaultsPath : "./.env.defaults",
-    examplePath: null,
-    export: true,
-    allowEmptyValues: true,
-});
+import { config } from "./config.ts";
 
 const app = new Application();
 
