@@ -1,6 +1,6 @@
 import { Application, oakCors } from "./deps.ts";
 import router from "./routes/apiRoutes.ts";
-import { config } from "./config.ts";
+import  "./config.ts";
 
 const app = new Application();
 

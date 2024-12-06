@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { config } from "../config.ts";
+import "../config.ts";
 
 const apiKey = Deno.env.get("API_KEY");
 if (!apiKey) {

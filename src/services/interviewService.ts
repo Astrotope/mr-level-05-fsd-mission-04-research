@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
-import { config } from "../config.ts";
+import "../config.ts";
 
 // Types
 interface Message {
@@ -85,6 +85,7 @@ export async function processResponse(input: ResponseInput): Promise<InterviewSt
 
     const model: GenerativeModel = genAI.getGenerativeModel({ 
         model: modelName,
+        systemInstruction: systemInstruction
     });
     
     let formattedHistory = history.length === 0 ? [{
@@ -137,6 +138,7 @@ export async function analyzeInterview(input: AnalysisInput): Promise<InterviewS
 
     const model = genAI.getGenerativeModel({ 
         model: modelName,
+        systemInstruction: systemInstruction
     });
 
     // const formattedHistory = history.map(msg => ({
