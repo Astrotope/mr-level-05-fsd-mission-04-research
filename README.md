@@ -1,6 +1,11 @@
 # Research Repository
 
 ---
+## Description
+
+This prototype for Mission 04, takes the code from Mission 03 and converts it to use a Deno/Oak backend. It does not implement any of the Tina AI assistant functionality. The goal was simply to get a well structured Deno project up and going, and gain some experience with Deno. This is a Deno 1 project using the Oak server.
+
+---
 
 ## Deno server
 
